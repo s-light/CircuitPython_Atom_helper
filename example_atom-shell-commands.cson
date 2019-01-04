@@ -1,0 +1,115 @@
+"*":
+  "atom-shell-commands":
+    commands: [
+      {
+        arguments: [
+          "--verbose"
+          "--filename={FileName}"
+          "--filename_project={ProjectRel}"
+          "--path_project={ProjectDir}"
+          "--action=COPY_AS_MAIN"
+        ]
+        command: "/home/stefan/mydata/github/CircuitPython/CircuitPython_Atom_helper/cp_copy.py"
+        name: "CircuitPython copy as main.py"
+        options:
+          cwd: "{ProjectDir}"
+          keymap: "ctrl-shift-r"
+          save: true
+          silent: false
+      }
+      {
+        arguments: [
+          "--verbose"
+          "--filename={FileName}"
+          "--filename_project={ProjectRel}"
+          "--path_project={ProjectDir}"
+          "--action=COPY_AS_CODE"
+        ]
+        command: "/home/stefan/mydata/github/CircuitPython/CircuitPython_Atom_helper/cp_copy.py"
+        name: "CircuitPython copy as code.py"
+        options:
+          cwd: "{ProjectDir}"
+          save: true
+          silent: false
+      }
+      {
+        arguments: [
+          "--verbose"
+          "--filename={FileName}"
+          "--filename_project={ProjectRel}"
+          "--path_project={ProjectDir}"
+          "--action=COPY"
+        ]
+        command: "/home/stefan/mydata/github/CircuitPython/CircuitPython_Atom_helper/cp_copy.py"
+        name: "CircuitPython copy"
+        options:
+          cwd: "{ProjectDir}"
+          keymap: "ctrl-shift-y"
+          save: true
+          silent: false
+      }
+      {
+        arguments: [
+          "--verbose"
+          "--filename={FileName}"
+          "--filename_project={ProjectRel}"
+          "--path_project={ProjectDir}"
+          "--action=COPY_AS_LIB"
+        ]
+        command: "/home/stefan/mydata/github/CircuitPython/CircuitPython_Atom_helper/cp_copy.py"
+        name: "CircuitPython copy as lib"
+        options:
+          cwd: "{ProjectDir}"
+          keymap: "ctrl-shift-alt-y"
+          save: true
+          silent: false
+      }
+    ]
+
+##########################################
+# old direct commands
+##########################################
+"atom-shell-commands":
+  commands: [
+    {
+      arguments: [
+        "--verbose"
+        "{FileName}"
+        "/media/stefan/CIRCUITPY/main.py"
+      ]
+      command: "cp"
+      name: "CircuitPython copy as main.py"
+      options:
+        cwd: "{FileDir}"
+        save: true
+        silent: false
+    }
+    {
+      arguments: [
+        "--verbose"
+        "{FileName}"
+        "/media/stefan/CIRCUITPY/{FileName}"
+      ]
+      command: "cp"
+      name: "CircuitPython copy"
+      options:
+        cwd: "{FileDir}"
+        # keymap: "ctrl-shift-y"
+        save: true
+        silent: false
+    }
+    {
+      arguments: [
+        "--verbose"
+        "{FileName}"
+        "/media/stefan/CIRCUITPY/lib/tlc59711/{FileName}"
+      ]
+      command: "cp"
+      name: "CircuitPython copy as lib"
+      options:
+        cwd: "{FileDir}"
+        keymap: "ctrl-shift-alt-y"
+        save: true
+        silent: false
+    }
+  ]

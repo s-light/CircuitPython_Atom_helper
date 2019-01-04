@@ -48,45 +48,66 @@ class CPCopy(object):
         "COPY_AS_CODE": None,
         "COPY": None,
         "COPY_COMPILE": None,
-        "LIB": None,
-        "LIB_COMPILE": None,
+        "COPY_AS_LIB": None,
+        "COPY_AS_LIB_COMPILE": None,
     }
+
+    VERBOSE_DEBUG = 2
 
     def __init__(
             self,
-            # *, #noqa
+            *, #noqa
             action=ACTION_DEFAULT,
-            projectpath=".",
+            path_project=".",
             filename="main.py",
-            verbose=0
+            filename_project="main.py",
+            verbose=0,
+            path_target=None
     ):
         """Init."""
         super(CPCopy, self).__init__()
 
         self.action = action
-        self.projectpath = projectpath
+        self.path_project = path_project
         self.filename = filename
+        self.filename_project = filename_project
         self.verbose = verbose
+        self.path_target = "/media/$USER/CIRCUITPY/"
+        if path_target:
+            self.path_target = path_target
 
+        # create action ~ function mapping
         self.ACTIONS["COPY_AS_MAIN"] = self.copy_as_main
-        self.ACTIONS["COPY_AS_CODE"] = self.copy_as_main
-        self.ACTIONS["COPY"] = self.copy_as_main
-        self.ACTIONS["COPY_COMPILE"] = self.copy_as_main
-        self.ACTIONS["LIB"] = self.copy_as_main
-        self.ACTIONS["LIB_COMPILE"] = self.copy_as_main
+        self.ACTIONS["COPY_AS_CODE"] = self.copy_as_code
+        self.ACTIONS["COPY"] = self.copy
+        self.ACTIONS["COPY_COMPILE"] = self.copy_mpy
+        self.ACTIONS["COPY_AS_LIB"] = self.copy_as_lib
+        self.ACTIONS["COPY_AS_LIB_COMPILE"] = self.copy_as_lib_mpy
 
+        self.prepare_paths()
+
+    ##########################################
     def process(self):
         """Process Files."""
-        if self.verbose > 1:
-            # print("action", self.action)
-            # print("self.ACTIONS[self.action]", self.ACTIONS[self.action])
+        if self.verbose:
+            print("action: '{}'".format(self.action))
+        if self.verbose >= self.VERBOSE_DEBUG:
             print(
                 "ACTIONS['{}']".format(self.action),
-                self.ACTIONS[self.action])
+                self.ACTIONS[self.action]
+            )
         action_function = self.ACTIONS[self.action]
-        if self.verbose > 1:
+
+        if self.verbose >= self.VERBOSE_DEBUG:
             print("action_function", action_function)
-        action_function()
+
+        # do action
+        action_function() #noqa
+
+        # force sync all things to disk
+        if self.verbose:
+            print("sync to disk...")
+        os.sync()
 
     def copy_as_main(self):
         """Copy as 'main.py'."""
@@ -114,25 +135,35 @@ class CPCopy(object):
 
     def copy_as_lib(self):
         """Copy with original filename."""
-        self.copy_w_options()
+        if self.verbose > 1:
+            print(self.copy_as_lib.__doc__)
+        self.copy_w_options(lib=True)
 
     def copy_as_lib_mpy(self):
         """Copy with original filename and compile to mpy."""
-        self.copy_w_options(compile_to_mpy=True)
+        if self.verbose > self.VERBOSE_DEBUG:
+            print(self.copy_as_lib_mpy.__doc__)
+        self.copy_w_options(lib=True, compile_to_mpy=True)
 
-    #####################
+    ##########################################
     def copy_w_options(
             self,
+            *, #noqa
             destination_filename=None,
             compile_to_mpy=False,
             lib=False
     ):
         """Copy with options."""
         #
+        source = os.path.join(self.path_project, self.filename)
+        source_abs = os.path.abspath(source)
 
+        destination = os.path.join(self.path_target, self.filename)
+        destination_abs = os.path.abspath(destination)
 
-
-        pass
+        if self.verbose > self.VERBOSE_DEBUG:
+            print(source_abs)
+        self.copy_file(source_abs, destination_abs)
 
     def copy_file(self, source, destination):
         """Copy file."""
@@ -145,7 +176,8 @@ class CPCopy(object):
 
         result_string = ""
         try:
-            print("command:{}".format(" ".join(command)))
+            if self.verbose:
+                print("command:{}".format(" ".join(command)))
             # subprocess.run(command, shell=True)
             subprocess.run(command)
             # result_string += subprocess.check_output(command).decode()
@@ -158,6 +190,27 @@ class CPCopy(object):
                 print("copy file done.")
         return result_string
 
+    ##########################################
+
+    def prepare_paths(self):
+        """Prepare all paths."""
+        self.path_script = os.path.dirname(os.path.abspath(__file__))
+        self.path_target = os.path.expanduser(self.path_target)
+        self.path_target = os.path.expandvars(self.path_target)
+        if self.verbose:
+            print(
+                "paths:\n"
+                "* path_script: {path_script}\n"
+                "* path_target: {path_target}\n"
+                "* path_project: {path_project}\n"
+                "* filename: {filename}\n"
+                "".format(
+                    path_script=self.path_script,
+                    path_target=self.path_target,
+                    filename=self.filename,
+                    path_project=self.path_project,
+                )
+            )
 ##########################################
 
 
@@ -168,7 +221,7 @@ def main():
     print(42*'*')
 
     filename_default = "./main.py"
-    projectpath_default = "."
+    path_project_default = "."
 
     parser = argparse.ArgumentParser(
         description=CPCopy.__doc__
@@ -184,17 +237,27 @@ def main():
     )
     parser.add_argument(
         "-p",
-        "--projectpath",
+        "--path_project",
         help="specify the location for the current project (defaults to {})"
         "".format(
-            projectpath_default
+            path_project_default
         ),
-        default=projectpath_default
+        default=path_project_default
     )
     parser.add_argument(
         "-f",
         "--filename",
         help="specify a location for the input file (defaults to {})"
+        "".format(
+            filename_default
+        ),
+        default=filename_default
+    )
+    parser.add_argument(
+        "-fp",
+        "--filename_project",
+        help="specify a location for the input file relative to project."
+        "(defaults to {})"
         "".format(
             filename_default
         ),
@@ -219,9 +282,10 @@ def main():
     args = parser.parse_args()
 
     cp_copy = CPCopy(
-        filename=args.filename,
-        projectpath=args.projectpath,
         action=args.action,
+        path_project=args.path_project,
+        filename=args.filename,
+        filename_project=args.filename_project,
         verbose=args.verbose
     )
     cp_copy.process()
