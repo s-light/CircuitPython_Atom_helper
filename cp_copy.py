@@ -73,6 +73,7 @@ class CPCopy(object):
         self.filename_project = filename_project
         self.verbose = verbose
         self.path_target = "/media/$USER/CIRCUITPY/"
+        self.path_lib = "lib"
         if path_target:
             self.path_target = path_target
 
@@ -134,13 +135,13 @@ class CPCopy(object):
         self.copy_w_options(compile_to_mpy=True)
 
     def copy_as_lib(self):
-        """Copy with original filename."""
+        """Copy with original filename to library folder."""
         if self.verbose > 1:
             print(self.copy_as_lib.__doc__)
         self.copy_w_options(lib=True)
 
     def copy_as_lib_mpy(self):
-        """Copy with original filename and compile to mpy."""
+        """Compile to mpy and copy with original filename to library folder."""
         if self.verbose > self.VERBOSE_DEBUG:
             print(self.copy_as_lib_mpy.__doc__)
         self.copy_w_options(lib=True, compile_to_mpy=True)
@@ -154,15 +155,22 @@ class CPCopy(object):
             lib=False
     ):
         """Copy with options."""
-        #
-        source = os.path.join(self.path_project, self.filename)
+        source = os.path.join(self.path_project, self.filename_project)
         source_abs = os.path.abspath(source)
 
-        destination = os.path.join(self.path_target, self.filename)
+        if destination_filename:
+            destination = os.path.join(self.path_target, destination_filename)
+        else:
+            if lib:
+                destination = os.path.join(
+                    self.path_target, self.path_lib, self.filename_project)
+            else:
+                destination = os.path.join(self.path_target, self.filename)
         destination_abs = os.path.abspath(destination)
 
         if self.verbose > self.VERBOSE_DEBUG:
             print(source_abs)
+            print(destination_abs)
         self.copy_file(source_abs, destination_abs)
 
     def copy_file(self, source, destination):
@@ -174,13 +182,15 @@ class CPCopy(object):
             destination,
         ]
 
+        result = None
         result_string = ""
         try:
             if self.verbose:
                 print("command:{}".format(" ".join(command)))
             # subprocess.run(command, shell=True)
-            subprocess.run(command)
-            # result_string += subprocess.check_output(command).decode()
+            # subprocess.run(command)
+            result = subprocess.check_output(command)
+            result_string = result.decode()
         except subprocess.CalledProcessError as e:
             error_message = "failed: {}".format(e)
             print(error_message)
@@ -188,7 +198,9 @@ class CPCopy(object):
         else:
             if self.verbose:
                 print("copy file done.")
-        return result_string
+            elif self.verbose >= self.VERBOSE_DEBUG:
+                print("copy file done:\n" + result_string)
+        return result
 
     ##########################################
 
@@ -204,10 +216,12 @@ class CPCopy(object):
                 "* path_target: {path_target}\n"
                 "* path_project: {path_project}\n"
                 "* filename: {filename}\n"
+                "* filename_project: {filename_project}\n"
                 "".format(
                     path_script=self.path_script,
                     path_target=self.path_target,
                     filename=self.filename,
+                    filename_project=self.filename_project,
                     path_project=self.path_project,
                 )
             )
