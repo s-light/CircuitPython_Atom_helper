@@ -7,7 +7,7 @@
 import sys
 import os
 import argparse
-# import subprocess
+import subprocess
 from contextlib import contextmanager
 
 
@@ -44,12 +44,12 @@ class CPCopy(object):
 
     ACTION_DEFAULT = "COPY_AS_MAIN"
     ACTIONS = {
-        "COPY_AS_MAIN",
-        "COPY_AS_CODE",
-        "COPY",
-        "COPY_COMPILE",
-        "LIB",
-        "LIB_COMPILE",
+        "COPY_AS_MAIN": None,
+        "COPY_AS_CODE": None,
+        "COPY": None,
+        "COPY_COMPILE": None,
+        "LIB": None,
+        "LIB_COMPILE": None,
     }
 
     def __init__(
@@ -68,20 +68,110 @@ class CPCopy(object):
         self.filename = filename
         self.verbose = verbose
 
+        self.ACTIONS["COPY_AS_MAIN"] = self.copy_as_main
+        self.ACTIONS["COPY_AS_CODE"] = self.copy_as_main
+        self.ACTIONS["COPY"] = self.copy_as_main
+        self.ACTIONS["COPY_COMPILE"] = self.copy_as_main
+        self.ACTIONS["LIB"] = self.copy_as_main
+        self.ACTIONS["LIB_COMPILE"] = self.copy_as_main
+
+    def process(self):
+        """Process Files."""
+        if self.verbose > 1:
+            # print("action", self.action)
+            # print("self.ACTIONS[self.action]", self.ACTIONS[self.action])
+            print(
+                "ACTIONS['{}']".format(self.action),
+                self.ACTIONS[self.action])
+        action_function = self.ACTIONS[self.action]
+        if self.verbose > 1:
+            print("action_function", action_function)
+        action_function()
+
+    def copy_as_main(self):
+        """Copy as 'main.py'."""
+        if self.verbose > 1:
+            print(self.copy_as_main.__doc__)
+        self.copy_w_options(destination_filename='main.py')
+
+    def copy_as_code(self):
+        """Copy as 'code.py'."""
+        if self.verbose > 1:
+            print(self.copy_as_code.__doc__)
+        self.copy_w_options(destination_filename='code.py')
+
+    def copy(self):
+        """Copy with original filename."""
+        if self.verbose > 1:
+            print(self.copy.__doc__)
+        self.copy_w_options()
+
+    def copy_mpy(self):
+        """Copy with original filename and compile to mpy."""
+        if self.verbose > 1:
+            print(self.copy_mpy.__doc__)
+        self.copy_w_options(compile_to_mpy=True)
+
+    def copy_as_lib(self):
+        """Copy with original filename."""
+        self.copy_w_options()
+
+    def copy_as_lib_mpy(self):
+        """Copy with original filename and compile to mpy."""
+        self.copy_w_options(compile_to_mpy=True)
+
+    #####################
+    def copy_w_options(
+            self,
+            destination_filename=None,
+            compile_to_mpy=False,
+            lib=False
+    ):
+        """Copy with options."""
+        #
+
+
+
+        pass
+
+    def copy_file(self, source, destination):
+        """Copy file."""
+        command = [
+            "cp",
+            "--verbose",
+            source,
+            destination,
+        ]
+
+        result_string = ""
+        try:
+            print("command:{}".format(" ".join(command)))
+            # subprocess.run(command, shell=True)
+            subprocess.run(command)
+            # result_string += subprocess.check_output(command).decode()
+        except subprocess.CalledProcessError as e:
+            error_message = "failed: {}".format(e)
+            print(error_message)
+            result_string += "\n" + error_message
+        else:
+            if self.verbose:
+                print("copy file done.")
+        return result_string
+
 ##########################################
 
 
-def main(args):
+def main():
     """Main."""
     print(42*'*')
     print('Python Version: ' + sys.version)
     print(42*'*')
 
-    input_filename_default = "./main.py"
-    input_projectpath_default = "."
+    filename_default = "./main.py"
+    projectpath_default = "."
 
     parser = argparse.ArgumentParser(
-        description="adds watermark to image file."
+        description=CPCopy.__doc__
     )
 
     parser.add_argument(
@@ -89,35 +179,31 @@ def main(args):
         "--action",
         help="what action should i take? (defaults to {})"
         "".format(CPCopy.ACTION_DEFAULT),
-        metavar='COMPILE',
         default=CPCopy.ACTION_DEFAULT,
         choices=CPCopy.ACTIONS
     )
     parser.add_argument(
-        "-i",
-        "--input_projectpath",
+        "-p",
+        "--projectpath",
         help="specify the location for the current project (defaults to {})"
         "".format(
-            input_projectpath_default
+            projectpath_default
         ),
-        metavar='INPUT_PROJECTPATH',
-        default=input_projectpath_default
+        default=projectpath_default
     )
     parser.add_argument(
-        "-i",
-        "--input_filename",
+        "-f",
+        "--filename",
         help="specify a location for the input file (defaults to {})"
         "".format(
-            input_filename_default
+            filename_default
         ),
-        metavar='INPUT_FILENAME',
-        default=input_filename_default
+        default=filename_default
     )
     # parser.add_argument(
     #     "-c",
     #     "--compile",
     #     help="compile file to 'mpy'? (defaults to False)",
-    #     metavar='COMPILE',
     #     action='store_true'
     # )
     parser.add_argument(
@@ -133,8 +219,8 @@ def main(args):
     args = parser.parse_args()
 
     cp_copy = CPCopy(
-        filename=args.input_filename,
-        projectpath=args.input_projectpath,
+        filename=args.filename,
+        projectpath=args.projectpath,
         action=args.action,
         verbose=args.verbose
     )
