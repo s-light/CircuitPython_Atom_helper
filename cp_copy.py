@@ -180,9 +180,9 @@ class CPCopy(object):
 
     def copy_arduino_as_uf2(self):
         """Compile Arduino Sketch, then convert to uf2 and copy to disc."""
-        filename_root = os.path.splitext(self.filename_project)[0]
+        filename_root = os.path.splitext(self.filename)[0]
         filename_uf2 = filename_root + ".uf2"
-        filename_bin = self.filename_project + ".bin"
+        filename_bin = self.filename + ".bin"
         full_filename_bin = os.path.join("build", filename_bin)
         full_filename_uf2 = os.path.join("build", filename_uf2)
 

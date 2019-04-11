@@ -8,6 +8,8 @@
           "--filename_project={ProjectRel}"
           "--path_project={ProjectDir}"
           "--action=COPY_AS_MAIN"
+          "--path_arduino=~/mydata/tools/arduino/arduino-1.8.9/"
+          "--path_uf2=~/mydata/tools/arduino/"
         ]
         command: "/home/stefan/mydata/github/CircuitPython/CircuitPython_Atom_helper/cp_copy.py"
         name: "CircuitPython copy as main.py"
@@ -39,8 +41,8 @@
           "--filename_project={ProjectRel}"
           "--path_project={ProjectDir}"
           "--action=COPY"
-          "--arduino_path=~/mydata/tools/arduino/arduino-1.8.9/"
-          "--u2f_path=~/mydata/tools/arduino/"
+          "--path_arduino=~/mydata/tools/arduino/arduino-1.8.9/"
+          "--path_uf2=~/mydata/tools/arduino/"
         ]
         command: "/home/stefan/mydata/github/CircuitPython/CircuitPython_Atom_helper/cp_copy.py"
         name: "CircuitPython copy"
