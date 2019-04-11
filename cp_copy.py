@@ -61,8 +61,8 @@ class CPCopy(object):
             *, #noqa
             action=ACTION_DEFAULT,
             path_project=".",
-            filename="main.py",
-            filename_project="main.py",
+            filename=None,
+            filename_project=None,
             path_arduino="",
             path_uf2="",
             verbose=0,
@@ -77,7 +77,11 @@ class CPCopy(object):
         self.path_project = path_project
         self.filename = filename
         self.filename_project = filename_project
+        if self.filename_project:
+            self.filename = os.path.basename(self.filename_project)
         self.verbose = verbose
+        if self.verbose:
+            print("verbose level:", self.verbose)
         self.path_target = "/media/$USER/CIRCUITPY/"
         self.path_lib = "lib"
         self.path_arduino = path_arduino
@@ -89,8 +93,10 @@ class CPCopy(object):
 
         # force action for arduino files
         if (
-                self.filename.endswith('ino') or
-                self.filename_project.endswith('ino')
+                (self.filename and self.filename_project)
+                and
+                (self.filename.endswith('ino') or
+                 self.filename_project.endswith('ino'))
         ):
             self.action = "COPY_ARDUINO_AS_UF2"
             if self.verbose:
@@ -320,23 +326,28 @@ class CPCopy(object):
         result = None
         result_string = ""
         try:
+            # if self.verbose >= self.VERBOSE_DEBUG:
             if self.verbose:
                 print("command:{}".format(" ".join(command)))
             # subprocess.run(command, shell=True)
             # subprocess.run(command)
-            result = subprocess.check_output(command)
-            result_string = result.decode()
+            result = subprocess.check_output(command, universal_newlines=True)
+            # print("result", result)
         except subprocess.CalledProcessError as e:
             error_message = "failed: {}".format(e)
             print(error_message)
             result_string += "\n" + error_message
             result = error_message
         else:
+            if self.verbose == 1:
+                # print 'Sketch uses' line.
+                print(result.splitlines()[-1])
+            elif self.verbose >= self.VERBOSE_DEBUG:
+                print("detailed output:")
+                print(result)
             if self.verbose:
                 print("compile done.")
-                result = None
-            elif self.verbose >= self.VERBOSE_DEBUG:
-                print("compile done:\n" + result_string)
+            result = None
         return result
 
     def convert_to_uf2(
@@ -369,9 +380,9 @@ class CPCopy(object):
             result_string += "\n" + error_message
         else:
             if self.verbose:
-                print("compile done.")
+                print("convert done.")
             elif self.verbose >= self.VERBOSE_DEBUG:
-                print("compile done:\n" + result_string)
+                print("convert done:\n" + result_string)
         return result
 
     def arduino_reset_board(self):
@@ -469,6 +480,7 @@ def main():
     print(42*'*')
 
     filename_default = "./main.py"
+    filename_project_default = "./main.py"
     path_project_default = "."
     path_arduino_default = ""
     path_uf2_default = ""
@@ -509,9 +521,9 @@ def main():
         help="specify a location for the input file relative to project."
         "(defaults to {})"
         "".format(
-            filename_default
+            filename_project_default
         ),
-        default=filename_default
+        default=filename_project_default
     )
     parser.add_argument(
         "-pa",
