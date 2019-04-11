@@ -189,11 +189,14 @@ class CPCopy(object):
         with cd(self.path_project):
             if self.verbose:
                 print("*"*42)
-                print("combile arduino sketch")
-            self.compile_arduino_sketch(
+                print("compile arduino sketch")
+            compile_result = self.compile_arduino_sketch(
                 self.filename_project,
                 path_arduino=self.path_arduino
             )
+            print(compile_result)
+            if compile_result:
+                raise ValueError("arduino compilation failed!")
             if self.verbose:
                 print("*"*42)
                 print("convert to uf2")
@@ -327,9 +330,11 @@ class CPCopy(object):
             error_message = "failed: {}".format(e)
             print(error_message)
             result_string += "\n" + error_message
+            result = error_message
         else:
             if self.verbose:
                 print("compile done.")
+                result = None
             elif self.verbose >= self.VERBOSE_DEBUG:
                 print("compile done:\n" + result_string)
         return result
