@@ -200,7 +200,7 @@ class CPCopy(object):
                 self.filename_project,
                 path_arduino=self.path_arduino
             )
-            print(compile_result)
+            # print(compile_result)
             if compile_result:
                 raise ValueError("arduino compilation failed!")
             if self.verbose:
@@ -315,29 +315,28 @@ class CPCopy(object):
         script = os.path.expandvars(script)
         command = [
             script,
-            "--verbose",
             "--pref",
             "build.path=build",
             "--verify",
-            "--verbose-build",
+            "--verbose",
             source,
         ]
 
         result = None
-        result_string = ""
         try:
-            # if self.verbose >= self.VERBOSE_DEBUG:
-            if self.verbose:
+            # if self.verbose:
+            if self.verbose >= self.VERBOSE_DEBUG:
                 print("command:{}".format(" ".join(command)))
-            # subprocess.run(command, shell=True)
-            # subprocess.run(command)
             result = subprocess.check_output(command, universal_newlines=True)
-            # print("result", result)
         except subprocess.CalledProcessError as e:
-            error_message = "failed: {}".format(e)
-            print(error_message)
-            result_string += "\n" + error_message
-            result = error_message
+            # print("error handling...")
+            print("*"*42)
+            print("failed: {}".format(e))
+            if self.verbose >= self.VERBOSE_DEBUG:
+                print("detailed output")
+                print(e.output)
+            result = e
+            print("*"*42)
         else:
             if self.verbose == 1:
                 # print 'Sketch uses' line.
