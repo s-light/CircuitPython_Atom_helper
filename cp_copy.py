@@ -119,14 +119,14 @@ class CPCopy(object):
         """Process Files."""
         if self.verbose:
             print("action: '{}'".format(self.action))
-        if self.verbose >= self.VERBOSE_DEBUG:
+        if self.verbose and self.verbose >= self.VERBOSE_DEBUG:
             print(
                 "ACTIONS['{}']".format(self.action),
                 self.ACTIONS[self.action]
             )
         action_function = self.ACTIONS[self.action]
 
-        if self.verbose >= self.VERBOSE_DEBUG:
+        if self.verbose and self.verbose >= self.VERBOSE_DEBUG:
             print("action_function", action_function)
 
         # check for path_target
@@ -325,26 +325,26 @@ class CPCopy(object):
         result = None
         try:
             # if self.verbose:
-            if self.verbose >= self.VERBOSE_DEBUG:
+            if self.verbose and self.verbose >= self.VERBOSE_DEBUG:
                 print("command:{}".format(" ".join(command)))
             result = subprocess.check_output(command, universal_newlines=True)
         except subprocess.CalledProcessError as e:
             # print("error handling...")
             print("*"*42)
             print("failed: {}".format(e))
-            if self.verbose >= self.VERBOSE_DEBUG:
+            if self.verbose and self.verbose >= self.VERBOSE_DEBUG:
                 print("detailed output")
                 print(e.output)
             result = e
             print("*"*42)
         else:
-            if self.verbose == 1:
-                # print 'Sketch uses' line.
-                print(result.splitlines()[-1])
-            elif self.verbose >= self.VERBOSE_DEBUG:
-                print("detailed output:")
-                print(result)
             if self.verbose:
+                if self.verbose == 1:
+                    # print 'Sketch uses' line.
+                    print(result.splitlines()[-1])
+                elif self.verbose >= self.VERBOSE_DEBUG:
+                    print("detailed output:")
+                    print(result)
                 print("compile done.")
             result = None
         return result
