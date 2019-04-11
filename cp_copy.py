@@ -239,7 +239,7 @@ class CPCopy(object):
             source_abs = os.path.abspath(source)
             destination = os.path.join(self.path_target, filename_uf2)
             destination_abs = os.path.abspath(destination)
-            if self.verbose > self.VERBOSE_DEBUG:
+            if self.verbose and self.verbose > self.VERBOSE_DEBUG:
                 print(source_abs)
                 print(destination)
             self.copy_file(source_abs, destination_abs)
@@ -301,9 +301,10 @@ class CPCopy(object):
             result_string += "\n" + error_message
         else:
             if self.verbose:
+                if self.verbose >= self.VERBOSE_DEBUG:
+                    print("details:")
+                    print(result_string)
                 print("copy file done.")
-            elif self.verbose >= self.VERBOSE_DEBUG:
-                print("copy file done:\n" + result_string)
         return result
 
     ##########################################
@@ -379,9 +380,10 @@ class CPCopy(object):
             result_string += "\n" + error_message
         else:
             if self.verbose:
+                if self.verbose >= self.VERBOSE_DEBUG:
+                    print("details:")
+                    print(result_string)
                 print("convert done.")
-            elif self.verbose >= self.VERBOSE_DEBUG:
-                print("convert done:\n" + result_string)
         return result
 
     def arduino_reset_board(self):
