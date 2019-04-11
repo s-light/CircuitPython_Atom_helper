@@ -50,6 +50,7 @@ class CPCopy(object):
         "COPY_COMPILE": None,
         "COPY_AS_LIB": None,
         "COPY_AS_LIB_COMPILE": None,
+        "COPY_ARDUINO_AS_UF2": None,
     }
 
     VERBOSE_DEBUG = 2
@@ -61,11 +62,15 @@ class CPCopy(object):
             path_project=".",
             filename="main.py",
             filename_project="main.py",
+            path_arduino="",
+            path_uf2="",
             verbose=0,
             path_target=None
     ):
         """Init."""
         super(CPCopy, self).__init__()
+
+        self.path_script = os.path.dirname(os.path.abspath(__file__))
 
         self.action = action
         self.path_project = path_project
@@ -74,8 +79,24 @@ class CPCopy(object):
         self.verbose = verbose
         self.path_target = "/media/$USER/CIRCUITPY/"
         self.path_lib = "lib"
-        if path_target:
+        self.path_arduino = path_arduino
+        self.path_uf2 = path_uf2
+        if not path_target:
+            self.path_target = self.get_UF2_disc()
+        else:
             self.path_target = path_target
+
+        # force action for arduino files
+        if (
+                self.filename.endswith('ino') or
+                self.filename_project.endswith('ino')
+        ):
+            self.action = "COPY_ARDUINO_AS_UF2"
+            if self.verbose:
+                print(
+                    "arduino file found! changed action to: '{}'"
+                    "".format(self.action)
+                )
 
         # create action ~ function mapping
         self.ACTIONS["COPY_AS_MAIN"] = self.copy_as_main
@@ -84,8 +105,7 @@ class CPCopy(object):
         self.ACTIONS["COPY_COMPILE"] = self.copy_mpy
         self.ACTIONS["COPY_AS_LIB"] = self.copy_as_lib
         self.ACTIONS["COPY_AS_LIB_COMPILE"] = self.copy_as_lib_mpy
-
-        self.prepare_paths()
+        self.ACTIONS["COPY_ARDUINO_AS_UF2"] = self.copy_arduino_as_uf2
 
     ##########################################
     def process(self):
@@ -102,13 +122,22 @@ class CPCopy(object):
         if self.verbose >= self.VERBOSE_DEBUG:
             print("action_function", action_function)
 
-        # do action
-        action_function() #noqa
+        # check for path_target
+        if self.path_target:
+            self.prepare_paths()
+            # do action
+            action_function() #noqa
 
-        # force sync all things to disk
-        if self.verbose:
-            print("sync to disk...")
-        os.sync()
+            # force sync all things to disk
+            if self.verbose:
+                print("sync to disk...")
+                os.sync()
+        else:
+            raise NotADirectoryError(
+                "no uf2 target disc found. "
+                "is it mounted correctly? "
+                "is the bootloader active?"
+            )
 
     def copy_as_main(self):
         """Copy as 'main.py'."""
@@ -145,6 +174,50 @@ class CPCopy(object):
         if self.verbose > self.VERBOSE_DEBUG:
             print(self.copy_as_lib_mpy.__doc__)
         self.copy_w_options(lib=True, compile_to_mpy=True)
+
+    def copy_arduino_as_uf2(self):
+        """Compile Arduino Sketch, then convert to uf2 and copy to disc."""
+        filename_root = os.path.splitext(self.filename_project)[0]
+        filename_uf2 = filename_root + ".uf2"
+        filename_bin = self.filename_project + ".bin"
+
+        with cd(self.path_project):
+            if self.verbose > self.VERBOSE_DEBUG:
+                print("*"*42)
+                print("combile arduino sketch")
+            self.compile_arduino_sketch(
+                self.filename_project,
+                path_arduino=self.path_arduino
+            )
+            if self.verbose > self.VERBOSE_DEBUG:
+                print("*"*42)
+                print("convert to uf2")
+            self.convert_to_uf2(
+                os.path.join("build", filename_bin),
+                os.path.join("build", filename_uf2),
+                path_uf2=self.path_uf2,
+                # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
+                base_address="0x4000"
+            )
+
+        if self.verbose > self.VERBOSE_DEBUG:
+            print("*"*42)
+            print("activate bootloader")
+        # we need to activate the bootloader before we can copy!!
+        print("please activate bootloader!!")
+        # TODO: activate bootloader automagically
+
+        if self.verbose > self.VERBOSE_DEBUG:
+            print("*"*42)
+            print("copy file")
+        source = os.path.join(self.path_project, filename_uf2)
+        source_abs = os.path.abspath(source)
+        destination = os.path.join(self.path_target, filename_uf2)
+        destination_abs = os.path.abspath(destination)
+        if self.verbose > self.VERBOSE_DEBUG:
+            print(source_abs)
+            print(destination)
+        self.copy_file(source_abs, destination_abs)
 
     ##########################################
     def copy_w_options(
@@ -204,9 +277,117 @@ class CPCopy(object):
 
     ##########################################
 
+    def compile_arduino_sketch(self, source, path_arduino=""):
+        """Compile arduino sketch."""
+        script = os.path.join(path_arduino, "arduino")
+        script = os.path.expanduser(script)
+        script = os.path.expandvars(script)
+        command = [
+            script,
+            "--verbose",
+            "--pref",
+            "build.path=build",
+            "--verify",
+            "--verbose-build",
+            source,
+        ]
+
+        result = None
+        result_string = ""
+        try:
+            if self.verbose:
+                print("command:{}".format(" ".join(command)))
+            # subprocess.run(command, shell=True)
+            # subprocess.run(command)
+            result = subprocess.check_output(command)
+            result_string = result.decode()
+        except subprocess.CalledProcessError as e:
+            error_message = "failed: {}".format(e)
+            print(error_message)
+            result_string += "\n" + error_message
+        else:
+            if self.verbose:
+                print("compile done.")
+            elif self.verbose >= self.VERBOSE_DEBUG:
+                print("compile done:\n" + result_string)
+        return result
+
+    def convert_to_uf2(
+            self, source, destination, path_uf2="", base_address="0x4000"):
+        """Convert to uf2."""
+        script = os.path.join(path_uf2, "uf2conv.py")
+        script = os.path.expanduser(script)
+        script = os.path.expandvars(script)
+        command = [
+            script,
+            "--convert",
+            # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
+            "--base " + base_address,
+            "--output=" + destination,
+            source,
+        ]
+
+        result = None
+        result_string = ""
+        try:
+            if self.verbose:
+                print("command:{}".format(" ".join(command)))
+            # subprocess.run(command, shell=True)
+            # subprocess.run(command)
+            result = subprocess.check_output(command)
+            result_string = result.decode()
+        except subprocess.CalledProcessError as e:
+            error_message = "failed: {}".format(e)
+            print(error_message)
+            result_string += "\n" + error_message
+        else:
+            if self.verbose:
+                print("compile done.")
+            elif self.verbose >= self.VERBOSE_DEBUG:
+                print("compile done:\n" + result_string)
+        return result
+
+    ##########################################
+
+    def get_UF2_disc(self):
+        """Find first matching UF2 disc."""
+        disc_names = [
+            "CIRCUITPY",
+            "ITSYM4BOOT",
+        ]
+        disc_found = False
+        disc_names_iter = iter(disc_names)
+        media_base = os.path.expanduser("/media/$USER/")
+        media_base = os.path.expandvars(media_base)
+        result_path = None
+        try:
+            while not disc_found:
+                disc_name = disc_names_iter.__next__()
+                temp_path = os.path.join(media_base, disc_name)
+                temp_path_exists = os.path.exists(temp_path)
+                if temp_path_exists:
+                    disc_found = True
+                    result_path = temp_path
+                if self.verbose:
+                    print(
+                        "paths:\n"
+                        "* disc_name: {disc_name}\n"
+                        "* temp_path: {temp_path}\n"
+                        "* temp_path_exists: {temp_path_exists}\n"
+                        "".format(
+                            disc_name=disc_name,
+                            temp_path=temp_path,
+                            temp_path_exists=temp_path_exists,
+                        )
+                    )
+        except StopIteration:
+            # nothing found.
+            pass
+
+        return result_path
+
     def prepare_paths(self):
         """Prepare all paths."""
-        self.path_script = os.path.dirname(os.path.abspath(__file__))
         self.path_target = os.path.expanduser(self.path_target)
         self.path_target = os.path.expandvars(self.path_target)
         if self.verbose:
@@ -236,6 +417,8 @@ def main():
 
     filename_default = "./main.py"
     path_project_default = "."
+    path_arduino_default = ""
+    path_uf2_default = ""
 
     parser = argparse.ArgumentParser(
         description=CPCopy.__doc__
@@ -277,6 +460,26 @@ def main():
         ),
         default=filename_default
     )
+    parser.add_argument(
+        "-pa",
+        "--path_arduino",
+        help="specify directory with arduino."
+        "(defaults to {})"
+        "".format(
+            path_arduino_default
+        ),
+        default=path_arduino_default
+    )
+    parser.add_argument(
+        "-pu",
+        "--path_uf2",
+        help="specify directory with uf2 script."
+        "(defaults to {})"
+        "".format(
+            path_uf2_default
+        ),
+        default=path_uf2_default
+    )
     # parser.add_argument(
     #     "-c",
     #     "--compile",
@@ -300,6 +503,8 @@ def main():
         path_project=args.path_project,
         filename=args.filename,
         filename_project=args.filename_project,
+        path_arduino=args.path_arduino,
+        path_uf2=args.path_uf2,
         verbose=args.verbose
     )
     cp_copy.process()
