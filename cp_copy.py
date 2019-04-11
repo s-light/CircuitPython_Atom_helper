@@ -6,6 +6,7 @@
 
 import sys
 import os
+import time
 import argparse
 import subprocess
 from contextlib import contextmanager
@@ -204,13 +205,23 @@ class CPCopy(object):
                 base_address="0x4000"
             )
 
-        if self.verbose:
-            print("*"*42)
-            print("activate bootloader")
-        # we need to activate the bootloader before we can copy!!
-        print("please activate bootloader!!")
-        # TODO: activate bootloader automagically
-        self.path_target = self.get_UF2_disc()
+        if not self.path_target:
+            if self.verbose:
+                print("*"*42)
+                print("activate bootloader")
+            # we need to activate the bootloader before we can copy!!
+            self.arduino_reset_board()
+
+        # check for new disc
+        timeout_duration = 5
+        timeout_start = time.monotonic()
+        while (
+                (not self.path_target) or
+                ((time.monotonic() - timeout_start) > timeout_duration)
+        ):
+            time.sleep(1)
+            self.path_target = self.get_UF2_disc()
+
         if self.path_target:
             if self.verbose:
                 print("*"*42)
@@ -357,6 +368,32 @@ class CPCopy(object):
             elif self.verbose >= self.VERBOSE_DEBUG:
                 print("compile done:\n" + result_string)
         return result
+
+    def arduino_reset_board(self):
+        """Enter bootloader mode."""
+        # log from Arduino IDE:
+        # Forcing reset using 1200bps open/close on port /dev/ttyACM0
+        # PORTS {/dev/ttyACM0, /dev/ttyS4, } / {/dev/ttyACM0, /dev/ttyS4, } =>
+        #   {}
+        # PORTS {/dev/ttyACM0, /dev/ttyS4, } / {/dev/ttyS4, } =>
+        #   {}
+        # PORTS {/dev/ttyS4, } / {/dev/ttyACM0, /dev/ttyS4, } =>
+        #   {/dev/ttyACM0, }
+        # Found upload port: /dev/ttyACM0
+
+        # so we need to know on which port to send the reset command.
+        # open the port at 1200bps and closing again.
+        # and than wait untill we have a new port.
+        import serial
+        try:
+            arduino_port = serial.Serial(
+                port="/dev/ttyACM0",
+                baudrate=1200)
+            arduino_port.setDTR(True)
+            time.sleep(0.1)
+            arduino_port.setDTR(False)
+        finally:
+            arduino_port.close()
 
     ##########################################
 
