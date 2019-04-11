@@ -125,19 +125,21 @@ class CPCopy(object):
         # check for path_target
         if self.path_target:
             self.prepare_paths()
-            # do action
-            action_function() #noqa
-
-            # force sync all things to disk
-            if self.verbose:
-                print("sync to disk...")
-                os.sync()
+        # elif self.action not "COPY_ARDUINO_AS_UF2":
         else:
-            raise NotADirectoryError(
-                "no uf2 target disc found. "
-                "is it mounted correctly? "
-                "is the bootloader active?"
-            )
+            if self.action != "COPY_ARDUINO_AS_UF2":
+                raise NotADirectoryError(
+                    "no uf2 target disc found. "
+                    "is it mounted correctly? "
+                )
+
+        # do action
+        action_function() #noqa
+
+        # force sync all things to disk
+        if self.verbose:
+            print("sync to disk...")
+            os.sync()
 
     def copy_as_main(self):
         """Copy as 'main.py'."""
@@ -180,44 +182,53 @@ class CPCopy(object):
         filename_root = os.path.splitext(self.filename_project)[0]
         filename_uf2 = filename_root + ".uf2"
         filename_bin = self.filename_project + ".bin"
+        full_filename_bin = os.path.join("build", filename_bin)
+        full_filename_uf2 = os.path.join("build", filename_uf2)
 
         with cd(self.path_project):
-            if self.verbose > self.VERBOSE_DEBUG:
+            if self.verbose:
                 print("*"*42)
                 print("combile arduino sketch")
             self.compile_arduino_sketch(
                 self.filename_project,
                 path_arduino=self.path_arduino
             )
-            if self.verbose > self.VERBOSE_DEBUG:
+            if self.verbose:
                 print("*"*42)
                 print("convert to uf2")
             self.convert_to_uf2(
-                os.path.join("build", filename_bin),
-                os.path.join("build", filename_uf2),
+                full_filename_bin,
+                full_filename_uf2,
                 path_uf2=self.path_uf2,
                 # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
                 base_address="0x4000"
             )
 
-        if self.verbose > self.VERBOSE_DEBUG:
+        if self.verbose:
             print("*"*42)
             print("activate bootloader")
         # we need to activate the bootloader before we can copy!!
         print("please activate bootloader!!")
         # TODO: activate bootloader automagically
-
-        if self.verbose > self.VERBOSE_DEBUG:
-            print("*"*42)
-            print("copy file")
-        source = os.path.join(self.path_project, filename_uf2)
-        source_abs = os.path.abspath(source)
-        destination = os.path.join(self.path_target, filename_uf2)
-        destination_abs = os.path.abspath(destination)
-        if self.verbose > self.VERBOSE_DEBUG:
-            print(source_abs)
-            print(destination)
-        self.copy_file(source_abs, destination_abs)
+        self.path_target = self.get_UF2_disc()
+        if self.path_target:
+            if self.verbose:
+                print("*"*42)
+                print("copy file")
+            source = os.path.join(self.path_project, full_filename_uf2)
+            source_abs = os.path.abspath(source)
+            destination = os.path.join(self.path_target, filename_uf2)
+            destination_abs = os.path.abspath(destination)
+            if self.verbose > self.VERBOSE_DEBUG:
+                print(source_abs)
+                print(destination)
+            self.copy_file(source_abs, destination_abs)
+        else:
+            raise NotADirectoryError(
+                "no uf2 target disc found. "
+                "is the bootloader active? "
+                "is it mounted correctly? "
+            )
 
     ##########################################
     def copy_w_options(
@@ -322,7 +333,7 @@ class CPCopy(object):
             script,
             "--convert",
             # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
-            "--base " + base_address,
+            "--base=" + base_address,
             "--output=" + destination,
             source,
         ]
@@ -368,18 +379,18 @@ class CPCopy(object):
                 if temp_path_exists:
                     disc_found = True
                     result_path = temp_path
-                if self.verbose:
-                    print(
-                        "paths:\n"
-                        "* disc_name: {disc_name}\n"
-                        "* temp_path: {temp_path}\n"
-                        "* temp_path_exists: {temp_path_exists}\n"
-                        "".format(
-                            disc_name=disc_name,
-                            temp_path=temp_path,
-                            temp_path_exists=temp_path_exists,
-                        )
-                    )
+                # if self.verbose:
+                #     print(
+                #         "paths:\n"
+                #         "* disc_name: {disc_name}\n"
+                #         "* temp_path: {temp_path}\n"
+                #         "* temp_path_exists: {temp_path_exists}\n"
+                #         "".format(
+                #             disc_name=disc_name,
+                #             temp_path=temp_path,
+                #             temp_path_exists=temp_path_exists,
+                #         )
+                #     )
         except StopIteration:
             # nothing found.
             pass
