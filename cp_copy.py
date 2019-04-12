@@ -402,10 +402,10 @@ class CPCopy(object):
         # open the port at 1200bps and closing again.
         # and than wait untill we have a new port.
         import serial
+        arduino_port = serial.Serial(baudrate=1200)
         try:
-            arduino_port = serial.Serial(
-                port="/dev/ttyACM0",
-                baudrate=1200)
+            arduino_port.port = "/dev/ttyACM0"
+            arduino_port.open()
             arduino_port.setDTR(True)
             time.sleep(0.1)
             arduino_port.setDTR(False)
