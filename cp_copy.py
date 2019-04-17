@@ -186,18 +186,20 @@ class CPCopy(object):
 
     def copy_arduino_as_uf2(self):
         """Compile Arduino Sketch, then convert to uf2 and copy to disc."""
+        sketch_base_dir = os.path.dirname(self.filename_project)
+        sketch_filename = os.path.basename(self.filename_project)
         filename_root = os.path.splitext(self.filename)[0]
         filename_uf2 = filename_root + ".uf2"
         filename_bin = self.filename + ".bin"
         full_filename_bin = os.path.join("build", filename_bin)
         full_filename_uf2 = os.path.join("build", filename_uf2)
 
-        with cd(self.path_project):
+        with cd(sketch_base_dir):
             if self.verbose:
                 print("*"*42)
                 print("compile arduino sketch")
             compile_result = self.compile_arduino_sketch(
-                self.filename_project,
+                sketch_filename,
                 path_arduino=self.path_arduino
             )
             # print(compile_result)
@@ -235,7 +237,7 @@ class CPCopy(object):
             if self.verbose:
                 print("*"*42)
                 print("copy file")
-            source = os.path.join(self.path_project, full_filename_uf2)
+            source = os.path.join(sketch_base_dir, full_filename_uf2)
             source_abs = os.path.abspath(source)
             destination = os.path.join(self.path_target, filename_uf2)
             destination_abs = os.path.abspath(destination)
