@@ -482,6 +482,8 @@ def main():
     print('Python Version: ' + sys.version)
     print(42*'*')
 
+    print(" ".join(sys.argv))
+
     filename_default = "./main.py"
     filename_project_default = "./main.py"
     path_project_default = "."
