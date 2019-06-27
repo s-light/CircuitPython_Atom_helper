@@ -216,41 +216,27 @@ class CPCopy(object):
                 base_address="0x4000"
             )
 
+        board_found = False
         if not self.path_target:
             if self.verbose:
                 print("*"*42)
                 print("activate bootloader")
             # we need to activate the bootloader before we can copy!!
-            self.arduino_reset_board()
+            board_found = self.arduino_reset_board()
 
-        # check for new disc
-        timeout_duration = 5
-        timeout_start = time.monotonic()
-        while (
-                (not self.path_target) or
-                ((time.monotonic() - timeout_start) > timeout_duration)
-        ):
-            time.sleep(1)
-            self.path_target = self.get_UF2_disc()
+        if board_found:
+            wait_for_new_uf2_disc()
 
-        if self.path_target:
-            if self.verbose:
-                print("*"*42)
-                print("copy file")
-            source = os.path.join(sketch_base_dir, full_filename_uf2)
-            source_abs = os.path.abspath(source)
-            destination = os.path.join(self.path_target, filename_uf2)
-            destination_abs = os.path.abspath(destination)
-            if self.verbose and self.verbose > self.VERBOSE_DEBUG:
-                print(source_abs)
-                print(destination)
-            self.copy_file(source_abs, destination_abs)
+            if self.path_target:
+                copy_uf2_file()
+            else:
+                raise NotADirectoryError(
+                    "no uf2 target disc found. "
+                    "is the bootloader active? "
+                    "is it mounted correctly? "
+                )
         else:
-            raise NotADirectoryError(
-                "no uf2 target disc found. "
-                "is the bootloader active? "
-                "is it mounted correctly? "
-            )
+            print("No Board found.")
 
     ##########################################
     def copy_w_options(
@@ -400,6 +386,8 @@ class CPCopy(object):
         #   {/dev/ttyACM0, }
         # Found upload port: /dev/ttyACM0
 
+        board_found = False
+
         # so we need to know on which port to send the reset command.
         # open the port at 1200bps and closing again.
         # and than wait untill we have a new port.
@@ -411,9 +399,41 @@ class CPCopy(object):
             arduino_port.setDTR(True)
             time.sleep(0.1)
             arduino_port.setDTR(False)
+            board_found = True
+        except serial.serialutil.SerialException as e:
+            if self.verbose:
+                print("SerialException: ", e)
+            board_found = False
         finally:
             arduino_port.close()
 
+        return board_found
+
+    def wait_for_new_uf2_disc(self):
+        """Wait for new uf2 disc to appear."""
+        # check for new disc
+        timeout_duration = 5
+        timeout_start = time.monotonic()
+        while (
+                (not self.path_target) or
+                ((time.monotonic() - timeout_start) > timeout_duration)
+        ):
+            time.sleep(1)
+            self.path_target = self.get_UF2_disc()
+
+    def copy_uf2_file(self):
+        """Copy uf2 file."""
+        if self.verbose:
+            print("*"*42)
+            print("copy file")
+        source = os.path.join(sketch_base_dir, full_filename_uf2)
+        source_abs = os.path.abspath(source)
+        destination = os.path.join(self.path_target, filename_uf2)
+        destination_abs = os.path.abspath(destination)
+        if self.verbose and self.verbose > self.VERBOSE_DEBUG:
+            print(source_abs)
+            print(destination)
+        self.copy_file(source_abs, destination_abs)
     ##########################################
 
     def get_UF2_disc(self):
