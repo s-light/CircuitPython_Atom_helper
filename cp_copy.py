@@ -147,6 +147,7 @@ class CPCopy(object):
         if self.verbose:
             print("sync to disk...")
             os.sync()
+        print("done.")
 
     def copy_as_main(self):
         """Copy as 'main.py'."""
@@ -223,12 +224,15 @@ class CPCopy(object):
                 print("activate bootloader")
             # we need to activate the bootloader before we can copy!!
             board_found = self.arduino_reset_board()
+            if board_found:
+                self.wait_for_new_uf2_disc()
+        else:
+            board_found = True
 
         if board_found:
-            wait_for_new_uf2_disc()
-
             if self.path_target:
-                copy_uf2_file()
+                self.copy_uf2_file(
+                    sketch_base_dir, full_filename_uf2, filename_uf2)
             else:
                 raise NotADirectoryError(
                     "no uf2 target disc found. "
@@ -421,7 +425,7 @@ class CPCopy(object):
             time.sleep(1)
             self.path_target = self.get_UF2_disc()
 
-    def copy_uf2_file(self):
+    def copy_uf2_file(self, sketch_base_dir, full_filename_uf2, filename_uf2):
         """Copy uf2 file."""
         if self.verbose:
             print("*"*42)
