@@ -195,6 +195,13 @@ class CPCopy(object):
         full_filename_bin = os.path.join("build", filename_bin)
         full_filename_uf2 = os.path.join("build", filename_uf2)
 
+        if sketch_base_dir is "":
+            sketch_base_dir = "."
+
+        # if self.verbose > 1:
+        #     print("sketch_base_dir", sketch_base_dir)
+        #     print("sketch_filename", sketch_filename)
+
         with cd(sketch_base_dir):
             if self.verbose:
                 print("*"*42)
