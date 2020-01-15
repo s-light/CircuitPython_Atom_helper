@@ -1,5 +1,5 @@
 # CircuitPython_Atom_helper
-small python script as helper for CircuitPython development with Atom
+small python script as helper for CircuitPython development with Atom under linux
 
 features:
 - upload python script as 'main.py'
@@ -9,3 +9,5 @@ features:
 
 tested in combination with [Atom Shell Commands Package](https://atom.io/packages/atom-shell-commands)
 (example configuration can be found in [example_atom-shell-commands.cson](example_atom-shell-commands.cson))
+
+for the arduino upload you need to have auto-mount enabled for the uf2 disc..

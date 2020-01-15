@@ -423,14 +423,37 @@ class CPCopy(object):
     def wait_for_new_uf2_disc(self):
         """Wait for new uf2 disc to appear."""
         # check for new disc
-        timeout_duration = 5
+        timeout_duration = 10
         timeout_start = time.monotonic()
-        while (
-                (not self.path_target) or
-                ((time.monotonic() - timeout_start) > timeout_duration)
-        ):
-            time.sleep(1)
-            self.path_target = self.get_UF2_disc()
+        wait_flag = True
+        while (wait_flag):
+            if self.path_target:
+                wait_flag = False
+            if self.verbose and self.verbose > self.VERBOSE_DEBUG:
+                print(
+                    "\n"
+                    "time:", time.monotonic() - timeout_start,
+                    "timeout:",  timeout_duration
+                )
+            if (time.monotonic() - timeout_start) > timeout_duration:
+                wait_flag = False
+            try:
+                time.sleep(1)
+                if self.verbose:
+                    print(".", end='', flush=True)
+            except KeyboardInterrupt as e:
+                print()
+                print("wait_for_new_uf2_disc stoped by KeyboardInterrupt.", e)
+                wait_flag = False
+
+            if wait_flag:
+                self.path_target = self.get_UF2_disc()
+                if self.verbose and self.verbose > self.VERBOSE_DEBUG:
+                    print()
+                    print(
+                        "self.path_target:\n", self.path_target
+                    )
+        print()
 
     def copy_uf2_file(self, sketch_base_dir, full_filename_uf2, filename_uf2):
         """Copy uf2 file."""
