@@ -94,14 +94,10 @@ class CPCopy:
             self.path_target = path_target
 
         # force action for arduino files
-        if (self.filename and self.filename_project) and (
-            self.filename.endswith("ino") or self.filename_project.endswith("ino")
-        ):
+        if self.check_for_arduino_file():
             self.action = "COPY_ARDUINO_AS_UF2"
             if self.verbose:
-                print(
-                    "arduino file found! changed action to: '{}'" "".format(self.action)
-                )
+                print("arduino file found! changed action to: '{}'".format(self.action))
 
         # create action ~ function mapping
         self.ACTIONS["COPY_AS_MAIN"] = self.copy_as_main
@@ -181,65 +177,43 @@ class CPCopy:
 
     def copy_arduino_as_uf2(self):
         """Compile Arduino Sketch, then convert to uf2 and copy to disc."""
-        sketch_base_dir = os.path.dirname(self.filename_project)
-        sketch_filename = os.path.basename(self.filename_project)
-        filename_root = os.path.splitext(self.filename)[0]
-        filename_uf2 = filename_root + ".uf2"
-        filename_bin = self.filename + ".bin"
-        full_filename_bin = os.path.join("build", filename_bin)
-        full_filename_uf2 = os.path.join("build", filename_uf2)
-
-        if sketch_base_dir == "":
-            sketch_base_dir = "."
-
+        filenames = self.arduino_prepare_filenames()
         # if self.verbose > 1:
-        #     print("sketch_base_dir", sketch_base_dir)
-        #     print("sketch_filename", sketch_filename)
+        #     print("sketch_base_dir", filenames.sketch_base_dir)
+        #     print("sketch_filename", filenames.sketch_filename)
 
-        with cd(sketch_base_dir):
-            if self.verbose:
-                print("*" * 42)
-                print("compile arduino sketch")
-            compile_result = self.compile_arduino_sketch(
-                sketch_filename, path_arduino=self.path_arduino
-            )
-            # print(compile_result)
-            if compile_result:
-                raise ValueError("arduino compilation failed!")
-            if self.verbose:
-                print("*" * 42)
-                print("convert to uf2")
-            self.convert_to_uf2(
-                full_filename_bin,
-                full_filename_uf2,
-                path_uf2=self.path_uf2,
-                # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
-                base_address="0x4000",
-            )
-
-        board_found = False
-        if not self.path_target:
-            if self.verbose:
-                print("*" * 42)
-                print("activate bootloader")
-            # we need to activate the bootloader before we can copy!!
-            board_found = self.arduino_reset_board()
-            if board_found:
-                self.wait_for_new_uf2_disc()
+        try:
+            self.arduino_compile_to_uf2(filenames)
+        except ValueError as error:
+            print(error)
         else:
-            board_found = True
-
-        if board_found:
-            if self.path_target:
-                self.copy_uf2_file(sketch_base_dir, full_filename_uf2, filename_uf2)
+            board_found = False
+            if not self.path_target:
+                if self.verbose:
+                    print("*" * 42)
+                    print("activate bootloader")
+                # we need to activate the bootloader before we can copy!!
+                board_found = self.arduino_reset_board()
+                if board_found:
+                    self.wait_for_new_uf2_disc()
             else:
-                raise NotADirectoryError(
-                    "no uf2 target disc found. "
-                    "is the bootloader active? "
-                    "is it mounted correctly? "
-                )
-        else:
-            print("No Board found.")
+                board_found = True
+
+            if board_found:
+                if self.path_target:
+                    self.copy_uf2_file(
+                        filenames["sketch_base_dir"],
+                        filenames["full_filename_uf2"],
+                        filenames["filename_uf2"],
+                    )
+                else:
+                    raise NotADirectoryError(
+                        "no uf2 target disc found. "
+                        "is the bootloader active? "
+                        "is it mounted correctly? "
+                    )
+            else:
+                print("No Board found.")
 
     ##########################################
     def copy_w_options(
@@ -297,6 +271,83 @@ class CPCopy:
 
     ##########################################
 
+    def check_for_arduino_file(self):
+        """Check for Arduino File and search main project file."""
+        result = False
+        filename = self.filename
+        filename_prj = self.filename_project
+        if filename and filename_prj:
+            if filename.endswith("ino") or filename_prj.endswith("ino"):
+                result = True
+            elif (filename.endswith("h") or filename_prj.endswith("h")) or (
+                filename.endswith("cpp") or filename_prj.endswith("cpp")
+            ):
+                result = "subfile"
+        return result
+
+    def arduino_prepare_filenames(self):
+        sketch_base_dir = os.path.dirname(self.filename_project)
+        if sketch_base_dir == "":
+            sketch_base_dir = "."
+
+        sketch_filename = os.path.basename(self.filename_project)
+        print("sketch_filename", sketch_filename)
+        if sketch_filename.endswith("h") or sketch_filename.endswith("cpp"):
+            print("searching for main arduino sketch entry point...")
+            # sketch_filename
+            # sketch_base_dir
+            head, tail = os.path.split(sketch_base_dir)
+            if not tail:
+                head, tail = os.path.split(head)
+            # hopefully tail now contains the project folder name
+            prj_folder_name = tail
+            if prj_folder_name:
+                sketch_filename = prj_folder_name + ".ino"
+            else:
+                print("error: not able to find arduino sketch entry point.")
+            print(
+                "done. we have the main entry point found: '{}'".format(sketch_filename)
+            )
+
+        filename_root = os.path.splitext(sketch_filename)[0]
+        filename_uf2 = filename_root + ".uf2"
+        filename_bin = sketch_filename + ".bin"
+        full_filename_bin = os.path.join("build", filename_bin)
+        full_filename_uf2 = os.path.join("build", filename_uf2)
+        return {
+            "sketch_base_dir": sketch_base_dir,
+            "sketch_filename": sketch_filename,
+            "filename_root": filename_root,
+            "filename_uf2": filename_uf2,
+            "filename_bin": filename_bin,
+            "full_filename_bin": full_filename_bin,
+            "full_filename_uf2": full_filename_uf2,
+        }
+
+    def arduino_compile_to_uf2(self, filenames):
+        """Compile arduino sketch and convert to uf2."""
+        with cd(filenames["sketch_base_dir"]):
+            if self.verbose:
+                print("*" * 42)
+                print("compile arduino sketch")
+            compile_result = self.compile_arduino_sketch(
+                filenames["sketch_filename"], path_arduino=self.path_arduino
+            )
+            # print(compile_result)
+            if compile_result:
+                raise ValueError("arduino compilation failed!")
+
+            if self.verbose:
+                print("*" * 42)
+                print("convert to uf2")
+            self.convert_to_uf2(
+                filenames["full_filename_bin"],
+                filenames["full_filename_uf2"],
+                path_uf2=self.path_uf2,
+                # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
+                base_address="0x4000",
+            )
+
     def compile_arduino_sketch(self, source, path_arduino=""):
         """Compile arduino sketch."""
         script = os.path.join(path_arduino, "arduino")
@@ -316,15 +367,16 @@ class CPCopy:
             # if self.verbose:
             if self.verbose and self.verbose >= self.VERBOSE_DEBUG:
                 print("command:{}".format(" ".join(command)))
+            print("", flush=True)
             result = subprocess.check_output(command, universal_newlines=True)
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError as error:
             # print("error handling...")
             print("*" * 42)
-            print("failed: {}".format(e))
+            print("failed: {}".format(error))
             if self.verbose and self.verbose >= self.VERBOSE_DEBUG:
                 print("detailed output")
-                print(e.output)
-            result = e
+                print(error.output)
+            result = error
             print("*" * 42)
         else:
             if self.verbose:
