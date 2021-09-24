@@ -130,14 +130,18 @@ class CPCopy:
                     "no uf2 target disc found. " "is it mounted correctly? "
                 )
 
-        # do action
-        action_function()  # noqa
-
-        # force sync all things to disk
-        if self.verbose:
-            print("sync to disk...")
-            os.sync()
-        print("done.")
+        try:
+            # do action
+            action_function()  # noqa
+        except ValueError as error:
+            # print(error)
+            raise error
+        else:
+            # force sync all things to disk
+            if self.verbose:
+                print("sync to disk...")
+                os.sync()
+            print("done.")
 
     def copy_as_main(self):
         """Copy as 'main.py'."""
@@ -185,7 +189,8 @@ class CPCopy:
         try:
             self.arduino_compile_to_uf2(filenames)
         except ValueError as error:
-            print(error)
+            # print(error)
+            raise error
         else:
             board_found = False
             if not self.path_target:
@@ -286,9 +291,15 @@ class CPCopy:
         return result
 
     def arduino_prepare_filenames(self):
-        sketch_base_dir = os.path.dirname(self.filename_project)
-        if sketch_base_dir == "":
-            sketch_base_dir = "."
+        # print("self.filename_project", self.filename_project)
+        # sketch_base_dir = os.path.dirname(self.filename_project)
+        # # print("sketch_base_dir", sketch_base_dir)
+        # if sketch_base_dir == "":
+        #     sketch_base_dir = "."
+        #     # print("sketch_base_dir → ", sketch_base_dir)
+        #
+        # the above does not work. so we use another start point.
+        sketch_base_dir = os.path.abspath(self.path_project)
 
         sketch_filename = os.path.basename(self.filename_project)
         print("sketch_filename", sketch_filename)
@@ -299,12 +310,16 @@ class CPCopy:
             head, tail = os.path.split(sketch_base_dir)
             if not tail:
                 head, tail = os.path.split(head)
+            # print("tail", tail)
+            # print("head", head)
             # hopefully tail now contains the project folder name
             prj_folder_name = tail
             if prj_folder_name:
                 sketch_filename = prj_folder_name + ".ino"
             else:
                 print("error: not able to find arduino sketch entry point.")
+            if not os.path.exists(sketch_filename):
+                raise "error: not able to find arduino sketch entry point."
             print(
                 "done. we have the main entry point found: '{}'".format(sketch_filename)
             )
@@ -331,7 +346,7 @@ class CPCopy:
                 print("*" * 42)
                 print("compile arduino sketch")
             compile_result = self.compile_arduino_sketch(
-                filenames["sketch_filename"], path_arduino=self.path_arduino
+                source=filenames["sketch_filename"], path_arduino=self.path_arduino
             )
             # print(compile_result)
             if compile_result:
@@ -341,8 +356,8 @@ class CPCopy:
                 print("*" * 42)
                 print("convert to uf2")
             self.convert_to_uf2(
-                filenames["full_filename_bin"],
-                filenames["full_filename_uf2"],
+                source=filenames["full_filename_bin"],
+                destination=filenames["full_filename_uf2"],
                 path_uf2=self.path_uf2,
                 # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
                 base_address="0x4000",
@@ -464,7 +479,7 @@ class CPCopy:
     def wait_for_new_uf2_disc(self):
         """Wait for new uf2 disc to appear."""
         # check for new disc
-        timeout_duration = 10
+        timeout_duration = 20
         timeout_start = time.monotonic()
         wait_flag = True
         while wait_flag:
