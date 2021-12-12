@@ -236,7 +236,8 @@ class CPCopy:
                     self.path_target, self.path_lib, self.filename_project
                 )
             else:
-                destination = os.path.join(self.path_target, self.filename)
+                # destination = os.path.join(self.path_target, self.filename)
+                destination = os.path.join(self.path_target, self.filename_project)
         destination_abs = os.path.abspath(destination)
 
         if self.verbose > self.VERBOSE_DEBUG:
@@ -578,9 +579,9 @@ class CPCopy:
                 "".format(
                     path_script=self.path_script,
                     path_target=self.path_target,
+                    path_project=self.path_project,
                     filename=self.filename,
                     filename_project=self.filename_project,
-                    path_project=self.path_project,
                 )
             )
 
