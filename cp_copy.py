@@ -9,6 +9,7 @@ import os
 import time
 import argparse
 import subprocess
+import pprint
 from contextlib import contextmanager
 
 
@@ -36,7 +37,7 @@ def cd(newdir):
 
 
 class CPCopy:
-    u"""
+    """
     Copy CircuitPython scripts or libraries.
 
     can copy files as
@@ -135,7 +136,10 @@ class CPCopy:
             action_function()  # noqa
         except ValueError as error:
             # print(error)
-            raise error
+            if "arduino compilation failed!" in str(error) :
+                print(error)
+            else:
+                raise error
         else:
             # force sync all things to disk
             if self.verbose:
@@ -303,7 +307,14 @@ class CPCopy:
         sketch_base_dir = os.path.abspath(self.path_project)
 
         sketch_filename = os.path.basename(self.filename_project)
-        print("sketch_filename", sketch_filename)
+        if self.verbose:
+            print("sketch_filename", sketch_filename)
+            if self.verbose >= self.VERBOSE_DEBUG:
+                print("path / file details:")
+                print("   self.path_project:", self.path_project)
+                print("   sketch_base_dir:", sketch_base_dir)
+                print("   self.filename_project:", self.filename_project)
+                print("   sketch_filename:", sketch_filename)
         if sketch_filename.endswith("h") or sketch_filename.endswith("cpp"):
             print("searching for main arduino sketch entry point...")
             # sketch_filename
@@ -330,7 +341,7 @@ class CPCopy:
         filename_bin = sketch_filename + ".bin"
         full_filename_bin = os.path.join("build", filename_bin)
         full_filename_uf2 = os.path.join("build", filename_uf2)
-        return {
+        result = {
             "sketch_base_dir": sketch_base_dir,
             "sketch_filename": sketch_filename,
             "filename_root": filename_root,
@@ -339,6 +350,12 @@ class CPCopy:
             "full_filename_bin": full_filename_bin,
             "full_filename_uf2": full_filename_uf2,
         }
+        if self.verbose:
+            if self.verbose >= self.VERBOSE_DEBUG:
+                print("path / file details:")
+                pp = pprint.PrettyPrinter(indent=4)
+                pp.pprint(result)
+        return result
 
     def arduino_compile_to_uf2(self, filenames):
         """Compile arduino sketch and convert to uf2."""
