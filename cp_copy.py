@@ -356,7 +356,9 @@ class CPCopy:
         filename_root = os.path.splitext(sketch_filename)[0]
         filename_uf2 = filename_root + ".uf2"
         filename_bin = sketch_filename + ".bin"
+        filename_elf = sketch_filename + ".elf"
         full_filename_bin = os.path.join("build", filename_bin)
+        full_filename_elf = os.path.join("build", filename_elf)
         full_filename_uf2 = os.path.join("build", filename_uf2)
         result = {
             "sketch_base_dir": sketch_base_dir,
@@ -365,6 +367,7 @@ class CPCopy:
             "filename_uf2": filename_uf2,
             "filename_bin": filename_bin,
             "full_filename_bin": full_filename_bin,
+            "full_filename_elf": full_filename_elf,
             "full_filename_uf2": full_filename_uf2,
         }
         if self.verbose:
@@ -392,25 +395,47 @@ class CPCopy:
                 print("convert to uf2")
             self.convert_to_uf2(
                 source=filenames["full_filename_bin"],
+                # source=filenames["full_filename_elf"],
                 destination=filenames["full_filename_uf2"],
                 path_uf2=self.path_uf2,
-                # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
-                base_address="0x4000",
+                # https://github.com/microsoft/uf2/blob/master/utils/uf2families.json
+                # # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
+                # base_address="0x4000",
+                # family="SAMD51",
+                base_address="0x0000",
+                family="ESP32S3",
             )
 
     def compile_arduino_sketch(self, source, path_arduino=""):
         """Compile arduino sketch."""
-        script = os.path.join(path_arduino, "arduino")
+        if "arduino-ide" in path_arduino:
+            raise "arduino-ide path given. currently not implemented. please use old arduino or use arduino-cli"
+        elif path_arduino.endswith("arduino-cli"):
+            script = path_arduino
+        else:
+            script = os.path.join(path_arduino, "arduino")
         script = os.path.expanduser(script)
         script = os.path.expandvars(script)
-        command = [
-            script,
-            "--pref",
-            "build.path=build",
-            "--verify",
-            "--verbose",
-            source,
-        ]
+
+        if path_arduino.endswith("arduino-cli"):
+            command = [
+                script,
+                "compile",
+                "--fqbn=esp32:esp32:adafruit_feather_esp32s3_reversetft",
+                # "--build-path=build",
+                "--output-dir=build",
+                "--verbose",
+                source,
+            ]
+        else:
+            command = [
+                script,
+                "--pref",
+                "build.path=build",
+                "--verify",
+                "--verbose",
+                source,
+            ]
 
         result = None
         try:
@@ -440,18 +465,26 @@ class CPCopy:
             result = None
         return result
 
-    def convert_to_uf2(self, source, destination, path_uf2="", base_address="0x4000"):
+    def convert_to_uf2(
+        self,
+        source,
+        destination,
+        path_uf2="",
+        base_address="0x4000",
+        family="SAMD51",
+    ):
         """Convert to uf2."""
         script = os.path.join(path_uf2, "uf2conv.py")
         script = os.path.expanduser(script)
         script = os.path.expandvars(script)
         command = [
             script,
+            source,
             "--convert",
             # base_address defaults to 16Byte bootloader (ItsyBitsy M4)
             "--base=" + base_address,
+            "--family=" + family,
             "--output=" + destination,
-            source,
         ]
 
         result = None
@@ -498,9 +531,15 @@ class CPCopy:
         try:
             arduino_port.port = "/dev/ttyACM0"
             arduino_port.open()
-            arduino_port.setDTR(True)
+            try:
+                arduino_port.setDTR(True)
+            except OSError as e:
+                print("SerialException setDTR(True):", e)
             time.sleep(0.1)
-            arduino_port.setDTR(False)
+            try:
+                arduino_port.setDTR(False)
+            except OSError as e:
+                print("SerialException setDTR(False): ", e)
             board_found = True
         except serial.serialutil.SerialException as e:
             if self.verbose:
@@ -566,6 +605,7 @@ class CPCopy:
         disc_names = [
             "CIRCUITPY",
             "ITSYM4BOOT",
+            "FTHRS3BOOT",
         ]
         disc_found = False
         disc_names_iter = iter(disc_names)

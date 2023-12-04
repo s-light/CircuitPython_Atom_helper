@@ -1,0 +1,90 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    // https://code.visualstudio.com/docs/editor/tasks#_variable-substitution
+    // https://code.visualstudio.com/docs/editor/variables-reference
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CircuitPython copy",
+            "type": "shell",
+            "command": "/home/stefan/mydata/github/CircuitPython/CircuitPython_Atom_helper/cp_copy.py",
+            "args": [
+                "--verbose",
+                "--verbose",
+                "--filename=${file}",
+                "--filename_project=${relativeFile}",
+                "--path_project=${workspaceFolder}",
+                "--action=COPY",
+                "--path_arduino=~/mydata/tools/arduino/arduino-cli/bin/arduino-cli",
+                // arduino-cli just works fine :-)
+                "--path_uf2=~/mydata/tools/arduino/"
+            ],
+            "options": {},
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "close": false,
+                "reveal": "always",
+                "panel": "shared",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "CircuitPython copy as main.py",
+            "type": "shell",
+            "command": "/home/stefan/mydata/github/CircuitPython/CircuitPython_Atom_helper/cp_copy.py",
+            "args": [
+                "--verbose",
+                "--filename=${file}",
+                "--filename_project=${relativeFile}",
+                "--path_project=${workspaceFolder}",
+                "--action=COPY_AS_MAIN",
+                "--path_arduino=~/mydata/tools/arduino/arduino-1.8.19/",
+                "--path_uf2=~/mydata/tools/arduino/"
+            ],
+            "options": {},
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "close": false,
+                "reveal": "always",
+                "panel": "shared",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "CircuitPython copy as lib",
+            "type": "shell",
+            "command": "/home/stefan/mydata/github/CircuitPython/CircuitPython_Atom_helper/cp_copy.py",
+            "args": [
+                "--verbose",
+                "--filename=${file}",
+                "--filename_project=${relativeFile}",
+                "--path_project=${workspaceFolder}",
+                "--action=COPY_AS_LIB",
+                "--path_arduino=~/mydata/tools/arduino/arduino-1.8.19/",
+                "--path_uf2=~/mydata/tools/arduino/"
+            ],
+            "options": {},
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "close": false,
+                "reveal": "always",
+                "panel": "shared",
+                "showReuseMessage": false
+            }
+        }
+        
+    ]
+}
