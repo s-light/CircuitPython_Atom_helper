@@ -55,7 +55,8 @@ class CPCopy:
         "COPY_COMPILE": None,
         "COPY_AS_LIB": None,
         "COPY_AS_LIB_COMPILE": None,
-        "COPY_ARDUINO_AS_UF2": None,
+        "COPY_COMPILE_ARDUINO_AS_UF2": None,
+        "COPY_UF2": None,
     }
 
     VERBOSE_DEBUG = 2
@@ -92,14 +93,20 @@ class CPCopy:
         self.path_uf2 = path_uf2
         if not path_target:
             self.path_target = self.get_UF2_disc()
+            print("self.path_target", self.path_target)
         else:
             self.path_target = path_target
 
-        # force action for arduino files
         if self.check_for_arduino_file():
-            self.action = "COPY_ARDUINO_AS_UF2"
-            if self.verbose:
-                print("arduino file found! changed action to: '{}'".format(self.action))
+            if self.action != "COPY_UF2":
+                # force action for arduino files
+                self.action = "COPY_COMPILE_ARDUINO_AS_UF2"
+                if self.verbose:
+                    print(
+                        "arduino file found! changed action to: '{}'".format(
+                            self.action
+                        )
+                    )
 
         # create action ~ function mapping
         self.ACTIONS["COPY_AS_MAIN"] = self.copy_as_main
@@ -108,7 +115,8 @@ class CPCopy:
         self.ACTIONS["COPY_COMPILE"] = self.copy_mpy
         self.ACTIONS["COPY_AS_LIB"] = self.copy_as_lib
         self.ACTIONS["COPY_AS_LIB_COMPILE"] = self.copy_as_lib_mpy
-        self.ACTIONS["COPY_ARDUINO_AS_UF2"] = self.copy_arduino_as_uf2
+        self.ACTIONS["COPY_COMPILE_ARDUINO_AS_UF2"] = self.copy_compile_arduino_as_uf2
+        self.ACTIONS["COPY_UF2"] = self.copy_uf2
 
     ##########################################
     def process(self):
@@ -125,9 +133,9 @@ class CPCopy:
         # check for path_target
         if self.path_target:
             self.prepare_paths()
-        # elif self.action not "COPY_ARDUINO_AS_UF2":
+        # elif self.action not "COPY_COMPILE_ARDUINO_AS_UF2":
         else:
-            if self.action != "COPY_ARDUINO_AS_UF2":
+            if self.action != "COPY_COMPILE_ARDUINO_AS_UF2":
                 raise NotADirectoryError(
                     "no uf2 target disc found. " "is it mounted correctly? "
                 )
@@ -184,7 +192,7 @@ class CPCopy:
             print(self.copy_as_lib_mpy.__doc__)
         self.copy_w_options(lib=True, compile_to_mpy=True)
 
-    def copy_arduino_as_uf2(self):
+    def copy_compile_arduino_as_uf2(self):
         """Compile Arduino Sketch, then convert to uf2 and copy to disc."""
         filenames = self.arduino_prepare_filenames()
         # if self.verbose > 1:
@@ -203,9 +211,12 @@ class CPCopy:
                     print("*" * 42)
                     print("activate bootloader")
                 # we need to activate the bootloader before we can copy!!
-                board_found = self.arduino_reset_board()
-                if board_found:
-                    self.wait_for_new_uf2_disc()
+                # board_found = self.arduino_reset_board()
+                # if board_found:
+                #     self.wait_for_new_uf2_disc()
+                # currently the reset does not work...
+                self.wait_for_new_uf2_disc()
+                board_found = True
             else:
                 board_found = True
 
@@ -224,6 +235,43 @@ class CPCopy:
                     )
             else:
                 print("No Board found.")
+
+    def copy_uf2(self):
+        """copy uf2 to disc."""
+        filenames = self.arduino_prepare_filenames()
+        # if self.verbose > 1:
+        #     print("sketch_base_dir", filenames.sketch_base_dir)
+        #     print("sketch_filename", filenames.sketch_filename)
+
+        board_found = False
+        if not self.path_target:
+            if self.verbose:
+                print("*" * 42)
+                print("activate bootloader")
+            # we need to activate the bootloader before we can copy!!
+            # board_found = self.arduino_reset_board()
+            # if board_found:
+            #     self.wait_for_new_uf2_disc()
+            # currently the reset does not work...
+            self.wait_for_new_uf2_disc()
+        else:
+            board_found = True
+
+        if board_found:
+            if self.path_target:
+                self.copy_uf2_file(
+                    filenames["sketch_base_dir"],
+                    filenames["full_filename_uf2"],
+                    filenames["filename_uf2"],
+                )
+            else:
+                raise NotADirectoryError(
+                    "no uf2 target disc found. "
+                    "is the bootloader active? "
+                    "is it mounted correctly? "
+                )
+        else:
+            print("No Board found.")
 
     ##########################################
     def copy_w_options(
@@ -424,7 +472,7 @@ class CPCopy:
                 "--fqbn=esp32:esp32:adafruit_feather_esp32s3_reversetft",
                 # "--build-path=build",
                 "--output-dir=build",
-                "--verbose",
+                # "--verbose",
                 source,
             ]
         else:
@@ -574,7 +622,7 @@ class CPCopy:
                     print(".", end="", flush=True)
             except KeyboardInterrupt as e:
                 print()
-                print("wait_for_new_uf2_disc stoped by KeyboardInterrupt.", e)
+                print("wait_for_new_uf2_disc stopped by KeyboardInterrupt.", e)
                 wait_flag = False
 
             if wait_flag:
