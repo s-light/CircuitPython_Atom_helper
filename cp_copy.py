@@ -61,6 +61,12 @@ class CPCopy:
 
     VERBOSE_DEBUG = 2
 
+    PATH_PREFIX_LIST = [
+        "fw",
+        "cp_disc",
+        "CIRCUITPY",
+    ]
+
     def __init__(
         self,
         *,  # noqa
@@ -284,19 +290,9 @@ class CPCopy:
         if destination_filename:
             destination = os.path.join(self.path_target, destination_filename)
         else:
-            p = pathlib.Path(self.filename_project)
-            destination_wout_fw_subfolder = p
-            # remove *fw* folder from path
-            if p.parts[0] in [
-                "fw",
-                "cp_disc",
-                "CIRCUITPY",
-                "CIRCUITPY_drive",
-                "CIRCUITPY_disc",
-                "CIRCUITPY drive",
-                "CIRCUITPY disc",
-            ]:
-                destination_wout_fw_subfolder = pathlib.Path(*p.parts[1:])
+            destination_wout_fw_subfolder = self.path_strip_for_target_section(
+                self.filename_project
+            )
 
             if lib:
                 destination = os.path.join(
@@ -648,6 +644,48 @@ class CPCopy:
 
     ##########################################
 
+    def path_strip_for_target_section(self, path):
+        p = pathlib.Path("artefact/CIRCUITPY_disc/magic_quest_artefact.py")
+        p = pathlib.Path(self.filename_project)
+        result = p
+        # remove *fw* folder from path
+        # if p.parts[0] in PATH_PREFIX_LIST:
+        #     result = pathlib.Path(*p.parts[1:])
+
+        cp_disc_start_point = pathlib.Path()
+        found = False
+        for part in p.parent.parts:
+            cp_disc_start_point = cp_disc_start_point / part
+            for prefix in self.PATH_PREFIX_LIST:
+                if prefix in part:
+                    found = True
+                    break
+            if found:
+                break
+
+        if found:
+            # print(f"cp_disc_start_point: '{cp_disc_start_point}'")
+            # print(f"p: '{p}'")
+            # remove all parent directories..
+            result = p.relative_to(cp_disc_start_point)
+            # print(f"result: '{result}'")
+        return result
+
+    def get_system_media_mountpoint(self):
+        mount_points = [
+            "/media/$USER/",
+            "/run/media/$USER/",
+        ]
+        mp_iter = iter(mount_points)
+        media_mp = None
+        try:
+            while media_mp is None or not media_mp.exists():
+                media_mp = pathlib.Path(os.path.expandvars(mp_iter.__next__()))
+        except StopIteration:
+            # nothing found.
+            pass
+        return media_mp
+
     def get_UF2_disc(self):
         """Find first matching UF2 disc."""
         disc_names = [
@@ -657,8 +695,7 @@ class CPCopy:
         ]
         disc_found = False
         disc_names_iter = iter(disc_names)
-        media_base = os.path.expanduser("/media/$USER/")
-        media_base = os.path.expandvars(media_base)
+        media_base = self.get_system_media_mountpoint()
         result_path = None
         try:
             while not disc_found:
